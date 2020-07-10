@@ -11,6 +11,7 @@ import org.pentaho.di.core.row.RowMetaInterface;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
+import org.pentaho.di.repository.ObjectId;
 import org.pentaho.di.repository.Repository;
 import org.pentaho.di.trans.Trans;
 import org.pentaho.di.trans.TransMeta;
@@ -22,90 +23,119 @@ import java.util.List;
 
 /**
  * This class is part of the demo step plug-in implementation.
- * It demonstrates the basics of developing a plug-in step for PDI. 
- * 
+ * It demonstrates the basics of developing a plug-in step for PDI.
+ * <p>
  * The demo step adds a new string field to the row stream and sets its
  * value to "Hello World!". The user may select the name of the new field.
- *   
+ * <p>
  * This class is the implementation of StepMetaInterface.
  * Classes implementing this interface need to:
- * 
+ * <p>
  * - keep track of the step settings
  * - serialize step settings both to xml and a repository
  * - provide new instances of objects implementing StepDialogInterface, StepInterface and StepDataInterface
  * - report on how the step modifies the meta-data of the row-stream (row structure and field types)
- * - perform a sanity-check on the settings provided by the user 
- * 
+ * - perform a sanity-check on the settings provided by the user
  */
 
-@Step(	
-		id = "RedisOutputStep",
-		image = "cn/danielw/pentaho/di/plugin/step/redis/icon/redis.svg",
-		i18nPackageName="cn.danielw.pentaho.di.plugin.step.redis",
-		name="RedisOutputStep.Name",
-		description="RedisOutputStep.Description",
-		categoryDescription="i18n:org.pentaho.di.trans.step:BaseStep.Category.Output",
-        documentationUrl = "https://github.com/DanielYWoo/pentaho-di-redis-plugin"
+@Step(
+    id = "RedisOutputStep",
+    image = "cn/danielw/pentaho/di/plugin/step/redis/icon/redis.svg",
+    i18nPackageName = "cn.danielw.pentaho.di.plugin.step.redis",
+    name = "RedisOutputStep.Name",
+    description = "RedisOutputStep.Description",
+    categoryDescription = "i18n:org.pentaho.di.trans.step:BaseStep.Category.Output",
+    documentationUrl = "https://github.com/DanielYWoo/pentaho-di-redis-plugin"
 )
 public class RedisOutputStepMeta extends BaseStepMeta implements StepMetaInterface, Cloneable {
 
     private static final String XML_TAG = "arguments";
-	private static final String XML_KEY_COMMAND = "command";
+    private static final String XML_KEY_COMMAND = "command";
     private static final String XML_KEY_URL = "url";
-	private static Class<?> PKG = RedisOutputStepMeta.class; // for i18n purposes
-	
-	private String command;
+    private static final String XML_KEY_DB = "db";
+    private static final String XML_KEY_AUTH = "auth";
+    private static Class<?> PKG = RedisOutputStepMeta.class;
+
+    private String command;
     private String url;
+    private String db;
+    private String auth;
 
     /**
-	 * Constructor should call super() to make sure the base class has a chance to initialize properly.
-	 */
-	public RedisOutputStepMeta() {
-		super(); 
-	}
-	
-	/**
-	 * Called by Spoon to get a new instance of the SWT dialog for the step.
-	 */
-	@SuppressWarnings("unused")
+     * Constructor should call super() to make sure the base class has a chance to initialize properly.
+     */
+    public RedisOutputStepMeta() {
+        super();
+    }
+
+    /**
+     * Called by Spoon to get a new instance of the SWT dialog for the step.
+     */
+    @SuppressWarnings("unused")
     public StepDialogInterface getDialog(Shell shell, StepMetaInterface meta, TransMeta transMeta, String name) {
         return new RedisOutputStepDialog(shell, meta, transMeta, name);
-	}
+    }
 
-	/**
-	 * Called by PDI to get a new instance of the step implementation. 
-	 * A standard implementation passing the arguments to the constructor of the step class is recommended.
-	 */
+    /**
+     * Called by PDI to get a new instance of the step implementation.
+     * A standard implementation passing the arguments to the constructor of the step class is recommended.
+     */
     @Override
-	public StepInterface getStep(StepMeta stepMeta, StepDataInterface stepDataInterface, int cnr, TransMeta transMeta, Trans disp) {
-		return new RedisOutputStep(stepMeta, stepDataInterface, cnr, transMeta, disp);
-	}
+    public StepInterface getStep(StepMeta stepMeta, StepDataInterface stepDataInterface, int cnr, TransMeta transMeta, Trans disp) {
+        return new RedisOutputStep(stepMeta, stepDataInterface, cnr, transMeta, disp);
+    }
 
-	/**
-	 * Called by PDI to get a new instance of the step data class.
-	 */
+    /**
+     * Called by PDI to get a new instance of the step data class.
+     */
     @Override
-	public StepDataInterface getStepData() {
-		return new RedisOutputStepData();
-	}	
+    public StepDataInterface getStepData() {
+        return new RedisOutputStepData();
+    }
 
-	/**
-	 * This method is called every time a new step is created and should allocate/set the step configuration
-	 * to sensible defaults. The values set here will be used by Spoon when a new step is created.    
-	 */
     @Override
-	public void setDefault() {
+    public void saveRep(Repository rep, IMetaStore metaStore, ObjectId id_transformation, ObjectId id_step) throws KettleException {
+        try {
+            rep.saveStepAttribute(id_transformation, id_step, XML_KEY_COMMAND, this.command);
+            rep.saveStepAttribute(id_transformation, id_step, XML_KEY_URL, this.url);
+            rep.saveStepAttribute(id_transformation, id_step, XML_KEY_DB, this.db);
+            rep.saveStepAttribute(id_transformation, id_step, XML_KEY_AUTH, this.auth);
+        } catch (Exception e) {
+            throw new KettleException("Unexpected error saving step Sample Plug - In from the repository", e);
+        }
+    }
+
+    @Override
+    public void readRep(Repository rep, IMetaStore metaStore, ObjectId id_step, List<DatabaseMeta> databases) throws KettleException {
+        try {
+            this.url = rep.getStepAttributeString(id_step, XML_KEY_URL);
+            this.command = rep.getStepAttributeString(id_step, XML_KEY_COMMAND);
+            this.db = rep.getStepAttributeString(id_step, XML_KEY_DB);
+            this.auth = rep.getStepAttributeString(id_step, XML_KEY_AUTH);
+        } catch (Exception e) {
+            throw new KettleException("Unexpected error reading step Sample Plug-In from the repository", e);
+        }
+    }
+
+    /**
+     * This method is called every time a new step is created and should allocate/set the step configuration
+     * to sensible defaults. The values set here will be used by Spoon when a new step is created.
+     */
+    @Override
+    public void setDefault() {
         command = "set";
-		url = "10.0.0.1:6381,10.0.0.2:6381,10.0.0.3:6381";
-	}
-	
-	public String getCommand() {
-		return command;
-	}
+        url = "10.0.0.1:6381";
+        db = "1";
+        auth = "123";
+    }
 
-	public void setCommand(String command) {
-		this.command = command;
-	}
+    public String getCommand() {
+        return command;
+    }
+
+    public void setCommand(String command) {
+        this.command = command;
+    }
 
     public String getUrl() {
         return url;
@@ -115,33 +145,54 @@ public class RedisOutputStepMeta extends BaseStepMeta implements StepMetaInterfa
         this.url = url;
     }
 
-	@Override
-	public String getXML() throws KettleException {
-        StringBuffer retval = new StringBuffer( 100 );
-        retval.append( "  " ).append( XMLHandler.openTag( XML_TAG ) );
-        retval.append( super.getXML() );
-        retval.append( "    " ).append( XMLHandler.addTagValue(XML_KEY_COMMAND, getCommand()) );
-        retval.append( "    " ).append( XMLHandler.addTagValue(XML_KEY_URL, getUrl() ) );
-        retval.append( "  " ).append( XMLHandler.closeTag( XML_TAG ) );
-        return retval.toString();
-	}
+    public String getDb() {
+        return db;
+    }
+
+    public void setDb(String db) {
+        this.db = db;
+    }
+
+    public String getAuth() {
+        return auth;
+    }
+
+    public void setAuth(String auth) {
+        this.auth = auth;
+    }
 
     @Override
-	public void loadXML(Node node, List<DatabaseMeta> databases, IMetaStore metaStore) throws KettleXMLException {
-        super.loadXML( node, databases, metaStore );
+    public String getXML() throws KettleException {
+        StringBuffer retval = new StringBuffer();
+        retval.append("  ").append(XMLHandler.openTag(XML_TAG));
+        retval.append(super.getXML());
+        retval.append("    ").append(XMLHandler.addTagValue(XML_KEY_COMMAND, getCommand()));
+        retval.append("    ").append(XMLHandler.addTagValue(XML_KEY_URL, getUrl()));
+        retval.append("    ").append(XMLHandler.addTagValue(XML_KEY_DB, getDb()));
+        retval.append("    ").append(XMLHandler.addTagValue(XML_KEY_AUTH, getAuth()));
+        retval.append("  ").append(XMLHandler.closeTag(XML_TAG));
+        return retval.toString();
+    }
+
+    @Override
+    public void loadXML(Node node, List<DatabaseMeta> databases, IMetaStore metaStore) throws KettleXMLException {
+        super.loadXML(node, databases, metaStore);
         try {
             Node arguments = XMLHandler.getSubNode(node, XML_TAG);
             command = XMLHandler.getTagValue(arguments, XML_KEY_COMMAND);
             logBasic("load config: command=" + command);
             url = XMLHandler.getTagValue(arguments, XML_KEY_URL);
             logBasic("load config: url=" + url);
-
-        } catch ( Exception e ) {
+            db = XMLHandler.getTagValue(arguments, XML_KEY_DB);
+            logBasic("load config: db=" + db);
+            auth = XMLHandler.getTagValue(arguments, XML_KEY_AUTH);
+            logBasic("load config: auth=" + auth);
+        } catch (Exception e) {
             throw new KettleXMLException("Redis plugin unable to read step info from XML node", e);
         }
-	}
+    }
 
-	@Override
+    @Override
     public Object clone() {
         return super.clone();
     }
@@ -169,33 +220,34 @@ public class RedisOutputStepMeta extends BaseStepMeta implements StepMetaInterfa
 		}
 	}
 */
-	/**
-	 * This method is called when the user selects the "Verify Transformation" option in Spoon. 
-	 * A list of remarks is passed in that this method should add to. Each remark is a comment, warning, error, or ok.
-	 * The method should perform as many checks as necessary to catch design-time errors.
-	 * 
-	 * Typical checks include:
-	 * - verify that all mandatory configuration is given
-	 * - verify that the step receives any input, unless it's a row generating step
-	 * - verify that the step does not receive any input if it does not take them into account
-	 * - verify that the step finds fields it relies on in the row-stream
-	 */
-	public void check(List<CheckResultInterface> remarks, TransMeta transMeta, StepMeta stepMeta, RowMetaInterface prev, String input[], String output[], RowMetaInterface info, VariableSpace space, Repository repository, IMetaStore metaStore)  {
-		
-		CheckResult cr;
 
-		// See if there are input streams leading to this step!
-		if (input.length > 0) {
-			cr = new CheckResult(CheckResult.TYPE_RESULT_OK,
-                    BaseMessages.getString(PKG, "RedisOutputStepMeta.CheckResult.ReceivingRows.OK"), stepMeta);
-			remarks.add(cr);
-		} else {
-			cr = new CheckResult(CheckResult.TYPE_RESULT_ERROR,
-                    BaseMessages.getString(PKG, "RedisOutputStepMeta.CheckResult.ReceivingRows.ERROR"), stepMeta);
-			remarks.add(cr);
-		}	
-    	
-	}
+    /**
+     * This method is called when the user selects the "Verify Transformation" option in Spoon.
+     * A list of remarks is passed in that this method should add to. Each remark is a comment, warning, error, or ok.
+     * The method should perform as many checks as necessary to catch design-time errors.
+     * <p>
+     * Typical checks include:
+     * - verify that all mandatory configuration is given
+     * - verify that the step receives any input, unless it's a row generating step
+     * - verify that the step does not receive any input if it does not take them into account
+     * - verify that the step finds fields it relies on in the row-stream
+     */
+    public void check(List<CheckResultInterface> remarks, TransMeta transMeta, StepMeta stepMeta, RowMetaInterface prev, String input[], String output[], RowMetaInterface info, VariableSpace space, Repository repository, IMetaStore metaStore) {
+
+        CheckResult cr;
+
+        // See if there are input streams leading to this step!
+        if (input.length > 0) {
+            cr = new CheckResult(CheckResult.TYPE_RESULT_OK,
+                BaseMessages.getString(PKG, "RedisOutputStepMeta.CheckResult.ReceivingRows.OK"), stepMeta);
+            remarks.add(cr);
+        } else {
+            cr = new CheckResult(CheckResult.TYPE_RESULT_ERROR,
+                BaseMessages.getString(PKG, "RedisOutputStepMeta.CheckResult.ReceivingRows.ERROR"), stepMeta);
+            remarks.add(cr);
+        }
+
+    }
 
 
 }

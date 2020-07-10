@@ -9,7 +9,7 @@ import org.pentaho.di.trans.step.StepDataInterface;
  * per-thread resources during step execution. Typical examples are:
  * result sets, temporary data, caching indexes, etc.
  */
-public class RedisOutputStepData extends BaseStepData implements StepDataInterface {
+public class RedisOutputStepData extends BaseStepData {
 
 	private RowMetaInterface outputRowMeta;
 	
